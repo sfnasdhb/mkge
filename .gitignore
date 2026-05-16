@@ -1,0 +1,46 @@
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+.pnp
+.pnp.js
+
+# Uploads / generated
+backend/uploads/
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Alembic (keep versions, ignore pycache)
+alembic/__pycache__/
