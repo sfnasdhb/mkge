@@ -42,3 +42,13 @@ def require_role(*roles: str):
             raise AuthorizationError("Insufficient permissions")
         return user
     return checker
+
+
+def get_document_service(db: AsyncSession = Depends(get_db)):
+    from src.mkge.infrastructure.db.postgres.document_repo import DocumentRepository
+    from src.mkge.infrastructure.storage.local import LocalStorageService
+    from src.mkge.application.documents.services import DocumentService
+    
+    repo = DocumentRepository(db)
+    storage = LocalStorageService()
+    return DocumentService(repo, storage)

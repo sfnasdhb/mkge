@@ -16,29 +16,38 @@ import { EmptyState } from "@/shared/components/EmptyState";
 import { DocumentTable } from "@/features/documents/DocumentTable";
 import { DocumentTableSkeleton } from "@/features/documents/DocumentSkeleton";
 import { UploadZone } from "@/features/documents/UploadZone";
-import { MOCK_DOCUMENTS } from "@/features/documents/mock";
+import { useDocuments, useUploadDocument, useDeleteDocument } from "@/features/documents/hooks";
 import type { Document } from "@/shared/types";
 
-type LoadingState = "loading" | "empty" | "data";
-
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<Document[]>(MOCK_DOCUMENTS);
   const [query, setQuery] = useState("");
-  const [state] = useState<LoadingState>("data");
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  const { data, isLoading } = useDocuments();
+  const uploadMutation = useUploadDocument();
+  const deleteMutation = useDeleteDocument();
+
+  const documents = data?.items || [];
   const filtered = documents.filter((d) =>
     d.filename.toLowerCase().includes(query.toLowerCase())
   );
 
-  function handleDelete(id: string) {
-    setDocuments((prev) => prev.filter((d) => d.id !== id));
-    toast.success("Đã xóa tài liệu", {
-      action: {
-        label: "Hoàn tác",
-        onClick: () => setDocuments(MOCK_DOCUMENTS),
-      },
-    });
+  async function handleUpload(file: File) {
+    try {
+      await uploadMutation.mutateAsync(file);
+      setUploadOpen(false);
+    } catch (error) {
+      toast.error("Lỗi khi tải lên tài liệu");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast.success("Đã xóa tài liệu");
+    } catch (error) {
+      toast.error("Lỗi khi xóa tài liệu");
+    }
   }
 
   return (
@@ -61,7 +70,7 @@ export default function DocumentsPage() {
                   Hỗ trợ định dạng PDF. Pipeline sẽ tự động trích xuất Thuốc / Bệnh / Triệu chứng.
                 </DialogDescription>
               </DialogHeader>
-              <UploadZone />
+              <UploadZone onUploaded={handleUpload} />
             </DialogContent>
           </Dialog>
         }
@@ -83,7 +92,7 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {state === "loading" ? (
+      {isLoading ? (
         <DocumentTableSkeleton />
       ) : documents.length === 0 ? (
         <EmptyState
