@@ -1,26 +1,24 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "react-hot-toast";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
+import { Toaster } from "@/shared/components/ui/sonner";
 import { queryClient } from "@/shared/lib/queryClient";
-import ProtectedRoute from "@/shared/components/ProtectedRoute";
-import LoginPage from "@/pages/LoginPage";
-import RegisterPage from "@/pages/RegisterPage";
-import DashboardPage from "@/pages/DashboardPage";
+import { useTheme } from "@/shared/stores/theme";
+import Router from "@/router";
 
 export default function App() {
+  const init = useTheme((s) => s.init);
+
+  useEffect(() => {
+    init();
+  }, [init]);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster position="top-right" />
+      <TooltipProvider delayDuration={300}>
+        <Router />
+        <Toaster />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

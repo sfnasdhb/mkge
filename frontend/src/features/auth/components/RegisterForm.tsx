@@ -1,68 +1,68 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, Lock, Mail, User } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
+import { registerSchema, type RegisterInput } from "../schemas";
 import { useRegister } from "../hooks";
 
 export default function RegisterForm() {
-  const register = useRegister();
-  const [form, setForm] = useState({ email: "", password: "", full_name: "" });
-
-  const update = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((p) => ({ ...p, [field]: e.target.value }));
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    register.mutate(form);
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { full_name: "", email: "", password: "" },
+  });
+  const reg = useRegister();
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-        <input
-          type="text"
-          required
-          value={form.full_name}
-          onChange={update("full_name")}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          placeholder="Nguyễn Văn A"
-        />
+    <form onSubmit={handleSubmit((v) => reg.mutate(v))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="reg-name">Họ và tên</Label>
+        <div className="relative">
+          <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input id="reg-name" placeholder="Nguyễn Văn A" className="pl-9" {...register("full_name")} />
+        </div>
+        {errors.full_name ? <FieldError message={errors.full_name.message!} /> : null}
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input
-          type="email"
-          required
-          value={form.email}
-          onChange={update("email")}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          placeholder="you@example.com"
-        />
+
+      <div className="space-y-1.5">
+        <Label htmlFor="reg-email">Email</Label>
+        <div className="relative">
+          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input id="reg-email" type="email" autoComplete="email" placeholder="bsi@benhvien.vn" className="pl-9" {...register("email")} />
+        </div>
+        {errors.email ? <FieldError message={errors.email.message!} /> : null}
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
-        <input
-          type="password"
-          required
-          minLength={8}
-          value={form.password}
-          onChange={update("password")}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          placeholder="Tối thiểu 8 ký tự"
-        />
+
+      <div className="space-y-1.5">
+        <Label htmlFor="reg-password">Mật khẩu</Label>
+        <div className="relative">
+          <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input id="reg-password" type="password" autoComplete="new-password" placeholder="Tối thiểu 8 ký tự" className="pl-9" {...register("password")} />
+        </div>
+        {errors.password ? (
+          <FieldError message={errors.password.message!} />
+        ) : (
+          <p className="text-xs text-muted-foreground">Tối thiểu 8 ký tự, tối đa 72 ký tự.</p>
+        )}
       </div>
-      <button
-        type="submit"
-        disabled={register.isPending}
-        className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
-      >
-        {register.isPending ? "Đang tạo tài khoản..." : "Đăng ký"}
-      </button>
-      <p className="text-center text-sm text-gray-500">
-        Đã có tài khoản?{" "}
-        <Link to="/login" className="font-medium text-brand-600 hover:underline">
-          Đăng nhập
-        </Link>
-      </p>
+
+      <Button type="submit" loading={reg.isPending} className="w-full" size="lg">
+        Tạo tài khoản
+      </Button>
     </form>
+  );
+}
+
+function FieldError({ message }: { message: string }) {
+  return (
+    <p className="flex items-center gap-1.5 text-xs text-destructive">
+      <AlertCircle className="h-3.5 w-3.5" />
+      {message}
+    </p>
   );
 }

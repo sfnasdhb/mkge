@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "./api";
 import { useAuthStore } from "./store";
@@ -13,8 +13,8 @@ export function useLogin() {
     onSuccess: (data) => {
       if (data.user) {
         setAuth(data.user, data.access_token, data.refresh_token);
-        toast.success(`Chào mừng, ${data.user.full_name}!`);
-        navigate("/dashboard");
+        toast.success(`Chào mừng trở lại, ${data.user.full_name}`);
+        navigate("/documents");
       }
     },
     onError: (err: any) => {
@@ -32,8 +32,8 @@ export function useRegister() {
     onSuccess: (data) => {
       if (data.user) {
         setAuth(data.user, data.access_token, data.refresh_token);
-        toast.success("Tạo tài khoản thành công!");
-        navigate("/dashboard");
+        toast.success("Tài khoản đã được tạo");
+        navigate("/documents");
       }
     },
     onError: (err: any) => {
