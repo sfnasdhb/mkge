@@ -21,29 +21,26 @@ export function UploadZone({ onUploaded }: Props) {
   const [files, setFiles] = useState<PendingFile[]>([]);
 
   const onDrop = useCallback((accepted: File[]) => {
-    const next = accepted.map((file) => ({
-      id: crypto.randomUUID(),
-      file,
-      progress: 0,
-    }));
-    setFiles((prev) => [...prev, ...next]);
-
-    next.forEach((pending) => {
+    accepted.forEach((file) => {
+      const id = crypto.randomUUID();
+      setFiles((prev) => [...prev, { id, file, progress: 0 }]);
+      
+      let currentProgress = 0;
       const interval = setInterval(() => {
+        currentProgress += Math.random() * 18;
+        if (currentProgress >= 100) {
+          clearInterval(interval);
+          currentProgress = 100;
+          
+          setTimeout(() => {
+            setFiles((p) => p.filter((x) => x.id !== id));
+            toast.success(`${file.name} đã được đưa vào hàng đợi xử lý`);
+            if (onUploaded) onUploaded(file);
+          }, 400);
+        }
+        
         setFiles((prev) =>
-          prev.map((f) => {
-            if (f.id !== pending.id) return f;
-            const nextProgress = Math.min(100, f.progress + Math.random() * 18);
-            if (nextProgress >= 100) {
-              clearInterval(interval);
-              setTimeout(() => {
-                setFiles((p) => p.filter((x) => x.id !== pending.id));
-                toast.success(`${pending.file.name} đã được đưa vào hàng đợi xử lý`);
-                onUploaded?.(pending.file);
-              }, 400);
-            }
-            return { ...f, progress: nextProgress };
-          })
+          prev.map((f) => (f.id === id ? { ...f, progress: currentProgress } : f))
         );
       }, 300);
     });
