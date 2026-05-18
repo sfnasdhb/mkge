@@ -18,11 +18,14 @@ alembic upgrade head
 cd frontend && npm install && npm run dev
 ```
 
-## Hoac dung Docker
+## Chạy bằng Docker (Khuyên dùng cho Backend)
 
 ```bash
-cp .env.example .env  # dien .env
-docker-compose up --build
+# 1. Tạo file .env và điền các thông số cần thiết (DB, Redis...)
+cp .env.example .env
+
+# 2. Chạy toàn bộ Backend (API, Worker, Nginx, Redis) bằng Docker
+docker-compose up --build -d
 ```
 
 ## Endpoints
@@ -31,13 +34,13 @@ docker-compose up --build
 - Frontend: http://localhost:5173
 - Health: http://localhost:8000/health
 
-## Phase hien tai: Phase 0 (Foundation) - DONE
+## Phase hien tai: Phase 1 (Upload + Document Management) - DONE
 
 - [x] Auth: register / login / refresh / logout
 - [x] JWT + refresh token rotation
 - [x] PostgreSQL schema + Alembic migration
 - [x] Frontend: Login / Register pages
-- [ ] Phase 1: Upload PDF + Document management
+- [x] Phase 1: Upload PDF + Document management (Celery worker, Local storage)
 - [ ] Phase 2: Real extraction pipeline (Gemini + Llama)
 - [ ] Phase 3: GraphRAG query
 
