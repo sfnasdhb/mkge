@@ -3,6 +3,7 @@ import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import AppShell from "@/shared/components/layout/AppShell";
 import AuthPage from "@/pages/AuthPage";
 import DocumentsPage from "@/pages/DocumentsPage";
+import GraphPage from "@/pages/GraphPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 
 export default function Router() {
@@ -15,16 +16,8 @@ export default function Router() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/documents" element={<DocumentsPage />} />
-            <Route
-              path="/graph"
-              element={
-                <PlaceholderPage
-                  title="Đồ thị tri thức"
-                  description="Cytoscape viewer sẽ có trong Phase 2."
-                  phase="Phase 2"
-                />
-              }
-            />
+            <Route path="/graph" element={<GraphPage />} />
+            <Route path="/graph/:documentId" element={<GraphPage />} />
             <Route
               path="/ask"
               element={

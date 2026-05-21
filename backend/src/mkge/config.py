@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     embedding_model: str = "models/text-embedding-004"
     embedding_dims: int = 768
 
+    # Pipeline models (swap to gemini-3-flash / llama-4 khi available)
+    gemini_parsing_model: str = "gemini-2.5-flash"
+    gemini_ner_model: str = "gemini-2.5-flash"
+    groq_verifier_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    verification_threshold: float = 0.7  # PROJECT_CONTEXT §13
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors(cls, v: str | list) -> list[str]:

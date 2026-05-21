@@ -44,8 +44,47 @@ export interface Document {
   processed_at?: string;
 }
 
-export type EntityType = "drug" | "disease" | "symptom";
+// PROJECT_CONTEXT §4.2 — chỉ 3 entity types, 4 relation types
+export type EntityType = "DRUG" | "DISEASE" | "SYMPTOM";
 
+export type RelationType =
+  | "TREATS"      // Drug → Disease
+  | "CAUSES_SE"   // Drug → Symptom (tác dụng phụ)
+  | "HAS_SYMPTOM" // Disease → Symptom
+  | "COMORBID";   // Disease ↔ Disease
+
+export interface GraphNode {
+  id: string;
+  name: string;
+  normalized_name: string;
+  type: EntityType;
+  description?: string | null;
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: RelationType;
+  confidence?: number;
+  evidence?: string | null;
+  source_chunk_ids?: string[];  // PROJECT_CONTEXT §9 anti-hallucination
+}
+
+export interface DocumentGraph {
+  document_id: string;
+  filename: string;
+  status: DocumentStatus;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface GraphOverview {
+  entity_counts_by_type: Record<string, number>;
+  relationship_count: number;
+}
+
+// Legacy types kept for compatibility with query/answer code (Phase 3)
 export interface Entity {
   id: string;
   name: string;

@@ -5,6 +5,8 @@ from fastapi import UploadFile
 
 from src.mkge.domain.entities.document import Document, DocumentStatus
 from src.mkge.domain.exceptions import NotFoundError, ValidationError, AuthorizationError
+from src.mkge.infrastructure.db.neo4j.driver import get_driver
+from src.mkge.infrastructure.db.neo4j.graph_repo import GraphRepository
 from src.mkge.infrastructure.db.postgres.document_repo import DocumentRepository
 from src.mkge.infrastructure.storage.local import LocalStorageService
 from src.mkge.interface.workers.tasks import process_document
@@ -75,4 +77,14 @@ class DocumentService:
             raise AuthorizationError("Not authorized to delete this document")
             
         self.storage_service.delete_file(doc.file_path)
+        try:
+            graph_repo = GraphRepository(get_driver())
+            await graph_repo.delete_graph_for_document(document_id)
+        except Exception:
+            pass  # Neo4j cleanup failure should not block PostgreSQL delete
+        try:
+            from src.mkge.infrastructure.db.qdrant.vector_repo import VectorRepository
+            VectorRepository().delete_by_document(document_id)
+        except Exception:
+            pass  # Qdrant cleanup failure non-blocking
         await self.document_repo.delete(document_id)

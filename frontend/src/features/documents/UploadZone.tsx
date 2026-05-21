@@ -17,11 +17,25 @@ interface Props {
   onUploaded?: (file: File) => void;
 }
 
+// Module-level dedupe: persists across StrictMode mount/unmount cycles
+const recentDrops = new Map<string, number>();
+const DEDUPE_WINDOW_MS = 1500;
+
 export function UploadZone({ onUploaded }: Props) {
   const [files, setFiles] = useState<PendingFile[]>([]);
 
   const onDrop = useCallback((accepted: File[]) => {
-    const next = accepted.map((file) => ({
+    const now = Date.now();
+    const fresh = accepted.filter((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      const last = recentDrops.get(key) ?? 0;
+      if (now - last < DEDUPE_WINDOW_MS) return false;
+      recentDrops.set(key, now);
+      return true;
+    });
+    if (fresh.length === 0) return;
+
+    const next = fresh.map((file) => ({
       id: crypto.randomUUID(),
       file,
       progress: 0,
@@ -29,22 +43,21 @@ export function UploadZone({ onUploaded }: Props) {
     setFiles((prev) => [...prev, ...next]);
 
     next.forEach((pending) => {
+      let progress = 0;
       const interval = setInterval(() => {
+        progress = Math.min(100, progress + Math.random() * 18);
+        const current = progress;
         setFiles((prev) =>
-          prev.map((f) => {
-            if (f.id !== pending.id) return f;
-            const nextProgress = Math.min(100, f.progress + Math.random() * 18);
-            if (nextProgress >= 100) {
-              clearInterval(interval);
-              setTimeout(() => {
-                setFiles((p) => p.filter((x) => x.id !== pending.id));
-                toast.success(`${pending.file.name} đã được đưa vào hàng đợi xử lý`);
-                onUploaded?.(pending.file);
-              }, 400);
-            }
-            return { ...f, progress: nextProgress };
-          })
+          prev.map((f) => (f.id === pending.id ? { ...f, progress: current } : f))
         );
+        if (current >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setFiles((p) => p.filter((x) => x.id !== pending.id));
+            toast.success(`${pending.file.name} đã được đưa vào hàng đợi xử lý`);
+            onUploaded?.(pending.file);
+          }, 400);
+        }
       }, 300);
     });
   }, [onUploaded]);

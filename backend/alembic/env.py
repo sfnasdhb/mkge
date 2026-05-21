@@ -37,10 +37,6 @@ async def run_migrations_online() -> None:
     engine = create_async_engine(
         settings.async_database_url,
         poolclass=NullPool,
-        connect_args={
-            "statement_cache_size": 0,
-            "prepared_statement_cache_size": 0,
-        },
     )
     async with engine.connect() as conn:
         await conn.run_sync(do_run_migrations)

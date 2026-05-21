@@ -41,6 +41,9 @@ dependencies = [
     "google-generativeai==0.7.2",
     "groq==0.9.0",
 
+    # PDF
+    "pdfplumber==0.11.0",
+
     # Utils
     "structlog==24.2.0",
     "httpx==0.27.0",

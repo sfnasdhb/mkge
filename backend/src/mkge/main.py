@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.mkge.config import settings
+from src.mkge.infrastructure.db.neo4j.driver import close_driver
 from src.mkge.interface.api.errors import register_exception_handlers
 from src.mkge.interface.api.middleware import RequestIdMiddleware
 from src.mkge.interface.api.v1 import auth, users, documents, graph, query, health
@@ -36,6 +37,10 @@ def create_app() -> FastAPI:
     app.include_router(documents.router, prefix=prefix)
     app.include_router(graph.router, prefix=prefix)
     app.include_router(query.router, prefix=prefix)
+
+    @app.on_event("shutdown")
+    async def _shutdown() -> None:
+        await close_driver()
 
     return app
 

@@ -1,18 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
-import uuid
 
 from src.mkge.config import settings
 
 engine = create_async_engine(
     settings.async_database_url,
     echo=settings.app_env == "development",
-    poolclass=NullPool,
-    connect_args={
-        "statement_cache_size": 0,
-        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
-    },
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 

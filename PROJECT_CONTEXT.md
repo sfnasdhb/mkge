@@ -224,8 +224,8 @@ collection_config = {
 
 **QUAN TRỌNG:** Embedding model phải nhất quán ingestion <-> query:
 ```python
-EMBEDDING_MODEL = "models/text-embedding-004"  # Gemini API — không đổi sau khi có data
-EMBEDDING_DIMS  = 768
+EMBEDDING_MODEL = "models/gemini-embedding-001"  # Gemini API (text-embedding-004 đã deprecated)
+EMBEDDING_DIMS  = 768  # gemini-embedding-001 mặc định 3072, ta truyền output_dimensionality=768 để giữ contract
 ```
 
 ### 4.4 Redis (Cache + Broker)
@@ -423,7 +423,7 @@ frontend/
 | Vector DB | Qdrant Cloud Free | 1GB cluster |
 | Relational DB | PostgreSQL (Supabase free) | 500MB |
 | Cache/Broker | Redis (Upstash free) | 10k cmd/day |
-| AI Extract | Gemini 3 Flash | multimodal, 1M context |
+| AI Extract | Gemini 2.5 Flash | multimodal, 1M context (Gemini 3 chưa public) |
 | AI Verify | Llama 4 via Groq Cloud | fast inference |
 | Embedding | Gemini text-embedding-004 API | 768 dims, KHONG dung local model |
 | File storage | Local disk (MVP) | |
@@ -615,8 +615,8 @@ CELERY_BROKER_URL=rediss://default:xxxx@xxx.upstash.io:6379
 GEMINI_API_KEY=xxxx
 GROQ_API_KEY=xxxx
 
-# Embedding (nhat quan, khong doi sau khi co data)
-EMBEDDING_MODEL=models/text-embedding-004
+# Embedding (text-embedding-004 deprecated -> dung gemini-embedding-001 voi output_dimensionality=768)
+EMBEDDING_MODEL=models/gemini-embedding-001
 EMBEDDING_DIMS=768
 
 # App

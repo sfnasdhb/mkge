@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,6 +49,24 @@ class DocumentRepository:
             db_doc.status = status
             if error_message is not None:
                 db_doc.error_message = error_message
+            await self.session.commit()
+
+    async def update_processing_result(
+        self,
+        document_id: uuid.UUID,
+        status: str,
+        entity_count: int,
+        relation_count: int,
+        processed_at: datetime,
+        error_message: str | None = None,
+    ) -> None:
+        db_doc = await self.session.get(DocumentModel, document_id)
+        if db_doc:
+            db_doc.status = status
+            db_doc.entity_count = entity_count
+            db_doc.relation_count = relation_count
+            db_doc.processed_at = processed_at
+            db_doc.error_message = error_message
             await self.session.commit()
 
     async def delete(self, document_id: uuid.UUID) -> None:

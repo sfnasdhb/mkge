@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { FileText, MoreHorizontal, Trash2 } from "lucide-react";
+import { FileText, MoreHorizontal, Network, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function DocumentTable({ documents, onDelete }: Props) {
+  const navigate = useNavigate();
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card/40">
       <div className="overflow-x-auto">
@@ -102,7 +104,12 @@ export function DocumentTable({ documents, onDelete }: Props) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem disabled={doc.status !== "done"}>
+                      <DropdownMenuItem
+                        disabled={doc.status !== "done"}
+                        onClick={() => navigate(`/graph/${doc.id}`)}
+                        className="gap-2"
+                      >
+                        <Network className="h-4 w-4" />
                         Xem đồ thị
                       </DropdownMenuItem>
                       <DropdownMenuItem disabled={doc.status !== "done"}>

@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir -p \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\domain\\\\entities\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\domain\\\\value_objects\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\auth\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\documents\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\pipeline\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\query\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\db\\\\postgres\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\db\\\\neo4j\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\db\\\\qdrant\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\llm\\\\prompts\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\cache\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\storage\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\interface\\\\api\\\\v1\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\interface\\\\workers\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\shared\" \"d:\\\\vấn đề khmt\\\\backend\\\\alembic\\\\versions\" \"d:\\\\vấn đề khmt\\\\backend\\\\tests\\\\unit\" \"d:\\\\vấn đề khmt\\\\backend\\\\tests\\\\integration\" \"d:\\\\vấn đề khmt\\\\nginx\" \"d:\\\\vấn đề khmt\\\\.github\\\\workflows\")"
+      "Bash(mkdir -p \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\domain\\\\entities\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\domain\\\\value_objects\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\auth\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\documents\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\pipeline\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\application\\\\query\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\db\\\\postgres\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\db\\\\neo4j\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\db\\\\qdrant\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\llm\\\\prompts\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\cache\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\infrastructure\\\\storage\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\interface\\\\api\\\\v1\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\interface\\\\workers\" \"d:\\\\vấn đề khmt\\\\backend\\\\src\\\\mkge\\\\shared\" \"d:\\\\vấn đề khmt\\\\backend\\\\alembic\\\\versions\" \"d:\\\\vấn đề khmt\\\\backend\\\\tests\\\\unit\" \"d:\\\\vấn đề khmt\\\\backend\\\\tests\\\\integration\" \"d:\\\\vấn đề khmt\\\\nginx\" \"d:\\\\vấn đề khmt\\\\.github\\\\workflows\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\vấn đề khmt\\\\backend\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(pip install *)",
+      "Bash(python -c \"from src.mkge.main import app; print\\('OK', len\\(app.routes\\), 'routes'\\)\")",
+      "Bash(python -c \"import structlog\")",
+      "WebSearch",
+      "Bash(python -c ' *)",
+      "WebFetch(domain:tapchiyhocvietnam.vn)",
+      "WebFetch(domain:scholar.dlu.edu.vn)"
     ],
     "additionalDirectories": [
       "d:\\vấn đề khmt\\backend\\src\\mkge\\domain"
