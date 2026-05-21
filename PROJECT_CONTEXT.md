@@ -423,9 +423,11 @@ frontend/
 | Vector DB | Qdrant Cloud Free | 1GB cluster |
 | Relational DB | PostgreSQL (Supabase free) | 500MB |
 | Cache/Broker | Redis (Upstash free) | 10k cmd/day |
-| AI Extract | Gemini 2.5 Flash | multimodal, 1M context (Gemini 3 chưa public) |
-| AI Verify | Llama 4 via Groq Cloud | fast inference |
-| Embedding | Gemini text-embedding-004 API | 768 dims, KHONG dung local model |
+| AI Parse | Gemini 2.5 Flash | multimodal PDF → Markdown (Gemini 3 chưa public, swap khi ra) |
+| AI Extract NER | Gemini 2.5 Flash | text NER, primary path |
+| AI NER fallback | Groq Llama 4 Scout | khi Gemini 429 quota cạn (free tier 20 RPD) |
+| AI Verify | Llama 4 Scout via Groq Cloud | cross-check rels, threshold conf ≥ 0.7 |
+| Embedding | Gemini `gemini-embedding-001` (output_dim=768) | text-embedding-004 deprecated |
 | File storage | Local disk (MVP) | |
 | Proxy | Nginx | |
 | Container | Docker + Docker Compose | |
@@ -443,15 +445,35 @@ frontend/
 PDF Upload -> FastAPI (202 + doc_id) -> Celery task enqueued
   Worker:
     1. parse_pdf:           Gemini multimodal -> Markdown (bao toan bang bieu)
-    2. extract_entities:    Gemini structured output -> Drug/Disease/Symptom + relations
-    3. verify_relations:    Llama 4/Groq -> {is_valid, confidence, evidence_chunk_id}
-                            DROP neu is_valid=false hoac confidence < 0.7
-    4. generate_embeddings: Gemini embedding API -> vectors
-    5. persist_graph:       Cypher -> Neo4j + Qdrant upsert
-    6. update_status:       Postgres documents.status = 'done'
+                            Fallback: pdfplumber raw text + "## Trang N" headings
+                            Đồng thời pdfplumber tách (page_num, text) cho chunks
+    2a. structural_parse:   Parse Markdown -> heading tree (Section{level, title, body})
+                            Skip noise sections: References/Mục lục/Phụ lục/Acknowledg
+                            (language-agnostic VN+EN)
+    2b. extract_entities:   Per-section NER. Mỗi section qua Gemini (primary) hoặc
+                            Groq Llama (fallback 429). Prompt blacklist: bỏ
+                            xét nghiệm/thủ thuật/lab values/references/đơn vị đo.
+    2c. structural_infer:   Hướng 3 ontology-based. Detect "topic" của section qua regex:
+                              - "(điều\s*trị|phác\s*đồ|chữa)\s+(.+)"      -> TREATS topic_disease
+                              - "(triệu\s*chứng|biểu\s*hiện)\s+(.+)"      -> HAS_SYMPTOM topic_disease -> ent
+                              - "(tác\s*dụng\s*phụ)\s+(.+)?"              -> CAUSES_SE topic_drug -> ent
+                            Với mỗi entity trong section match topic + đúng EntityType,
+                            sinh relationship với confidence=0.75 và evidence là heading_path
+    3. verify_relations:    Llama 4/Groq cross-check từng rel (batch 8) -> {verified, confidence, reason}
+                            DROP nếu verified=false hoặc confidence < 0.7
+    3b. assign_chunks:      Map mỗi rel với chunk PDF chứa cả source.name + target.name
+                            (so sánh sau khi strip diacritics tiếng Việt)
+                            DROP rel nào không tìm được chunk evidence
+    4. generate_embeddings: Gemini gemini-embedding-001 (output_dim=768) cho mỗi chunk
+                            Fallback: zero vector + log warning
+    5. persist_graph:       Cypher batch -> Neo4j (Drug/Disease/Symptom/Document/Chunk +
+                            CONTAINS/MENTIONS/TREATS/CAUSES_SE/HAS_SYMPTOM/COMORBID)
+                            + Qdrant upsert (chunk_id, user_id, page, text, entity_ids)
+    6. update_status:       Postgres documents.status = 'done' + entity_count + relation_count
 ```
 
-**Anti-hallucination rule:** Moi edge Neo4j **BAT BUOC** co `source_chunk_ids` non-empty.
+**Anti-hallucination rule:** Mọi edge y khoa Neo4j **BẮT BUỘC** có `source_chunk_ids` non-empty
+(chunk PDF chứa cả 2 entity → evidence vật lý, không phải LLM bịa).
 
 ### Pipeline 2: GraphRAG Query (sync voi cache)
 
@@ -516,15 +538,19 @@ Rui ro: Nginx client_max_body_size phai set >= 50MB
 
 ---
 
-### PHASE 2 — Real Extraction Pipeline (1.5 tuan) [PHASE QUAN TRONG NHAT]
-**Demo duoc:** Upload PDF y khoa -> 60s sau -> graph co entity that tu file
+### PHASE 2 — Real Extraction Pipeline (1.5 tuan) [PHASE QUAN TRONG NHAT] ✅ DONE 2026-05-20
+**DoD đạt được:** Upload PDF y khoa -> ~72s sau -> graph có entity thật từ file
 
-- Thay Celery stub bang pipeline that (parse -> extract -> verify -> persist)
-- LLM Gateway voi retry + fallback + structured output
-- Neo4j repo + Qdrant repo
-- Frontend: GraphViewer Cytoscape.js
+- ✅ Pipeline thật 6 stage (parse → structural → NER → verify → embed → persist)
+- ✅ Hybrid Gemini→Groq fallback (chưa abstract thành LLM Gateway riêng — TODO Phase 4)
+- ✅ Neo4j repo (Drug/Disease/Symptom/Document/Chunk + 6 rel types) + Qdrant repo (768 dim)
+- ✅ Frontend GraphViewer Cytoscape.js với 3 màu entity + 4 relation type
+- ✅ Anti-hallucination: source_chunk_ids non-empty + strip diacritics matching
+- ✅ Hướng 3 ontology inference từ heading regex
 
-Rui ro: Phase nang nhat. Pair programming phan prompt engineering. Chuan bi 3 PDF golden de test.
+**Kết quả thực tế đo được:**
+- PDF Bộ Y tế 18 trang → 142 entities, 45 relationships, 18 chunks (940s lần đầu, 72s sau cache)
+- PDF viêm phế quản 4 trang → 69 entities, 24 rels, 4 chunks, 72s end-to-end
 
 ---
 
@@ -638,22 +664,87 @@ RATE_LIMIT_QUERY_PER_HOUR=30
 | Dual-Model (Gemini extract + Llama verify) | Core contribution, chong hallucination |
 | Confidence threshold 0.7 + source_chunk_ids bat buoc | Safety cho y khoa |
 | concurrency=1 cho Celery worker | Fit free tier 512MB |
+| **Hybrid Gemini→Groq fallback ở NER** (chốt Phase 2) | Gemini free tier 20 RPD cạn nhanh; fallback Groq giữ pipeline chạy. Đánh đổi: khi fallback, mất tính dual-model khách quan vì cùng Groq làm cả NER lẫn Verify |
+| **Skip noise sections** (References/Mục lục/Phụ lục/Acknowledgments) | Tránh entity giả từ tên bài báo tiếng Anh trong references VN paper. Regex language-agnostic (VN \| EN) |
+| **NER prompt blacklist explicit** thay vì thêm entity type | Văn bản y khoa có xét nghiệm/thủ thuật/lab values/đơn vị đo dễ bị Llama nhét sai. Plan giữ 3 type (Drug/Disease/Symptom), prompt liệt kê rõ "KHÔNG TRÍCH" để không phình schema |
+| **Page-aware chunks** (1 page = 1 chunk, split nếu >4K chars) | Anti-hallucination cần `source_chunk_ids` với page number → citation về đúng trang PDF gốc (yêu cầu §11 Phase 3) |
+| **Hướng 3: structural inference từ heading regex** | PDF guideline y khoa viết kiểu phân nhóm ("Các thuốc gồm: A, B, C"), không có câu "A điều trị X" tường minh. Sentence-level NER miss. Suy luận từ section heading → bù recall, verifier vẫn validate |
+| **Strip diacritics khi match chunk** | normalized_name "tang huyet ap" không match chunk text "Tăng huyết áp" → phải strip dấu cả 2 bên. Lỗi này khiến 31/51 rel bị drop oan trước khi fix |
 
 ---
 
-## 14. Trang thai hien tai
+## 14. Trang thai hien tai (cap nhat 2026-05-21)
 
-**Phase dang lam:** Phase 0 (Foundation)
+**Phase đang làm:** Phase 3 (GraphRAG Query) — sắp bắt đầu
 
-**Chua lam gi ca — can bat dau ngay:**
-1. Tao 4 tai khoan DB cloud (Neo4j Aura + Qdrant + Supabase + Upstash)
-2. Setup repo + Docker Compose + .env.example
-3. Code auth module
-4. Frontend skeleton
+**Đã hoàn thành:**
+- ✅ Phase 0 (Foundation): Auth + 4 DB cloud + Docker Compose
+- ✅ Phase 1 (Upload + Document Management): UploadZone + DocumentTable + polling status
+- ✅ Phase 2 (Real Extraction Pipeline): Pipeline 6 stage + Hướng 3 ontology + anti-hallucination
 
-**Oracle:** Chua dang ky duoc -> khong block gi, dung managed DB cloud truoc.
+**Phase 3 cần làm tiếp:**
+1. `application/query/graphrag.py` — orchestrator (embed → Qdrant → Cypher → context → Llama)
+2. `infrastructure/cache/redis.py` — Redis cache TTL 1h
+3. `interface/api/v1/query.py` — POST /query + GET /query/history
+4. Frontend `features/query/` — ChatBox + AnswerCard + CitationList
+5. `pages/AskPage.tsx` (replace placeholder)
+
+**Oracle:** Chưa đăng ký được → không block gì, dùng managed DB cloud trước.
 
 ---
 
-*File nay duoc generate tu session thiet ke kien truc ngay 2026-05-12.*
-*Moi thay doi quyet dinh ky thuat -> cap nhat file nay.*
+## 15. Implementation Notes (Phase 2)
+
+Section này gom các deviation từ plan ban đầu + lý do thực tế khi triển khai.
+Tách khỏi §1-13 để giữ plan gốc sạch.
+
+### 15.1 Deviation đã được approve
+
+| Deviation | Plan gốc | Thực tế | Lý do |
+|---|---|---|---|
+| Model Gemini | "Gemini 3 Flash" | `gemini-2.5-flash` | Gemini 3 chưa public 2026-05 |
+| Model embedding | `models/text-embedding-004` | `models/gemini-embedding-001` (output_dim=768) | text-embedding-004 đã deprecated. Giữ 768 dim để khớp Qdrant collection |
+| Model verify | "Llama 4 via Groq" | `meta-llama/llama-4-scout-17b-16e-instruct` | Llama 4 Scout là biến thể public trên Groq |
+| LLM Gateway module | Có (§3) | Chưa abstract | Code gọi Gemini/Groq trực tiếp trong từng pipeline module. Phase 4 sẽ refactor |
+| FULLTEXT INDEX entity_search | Có (§4.2) | Chưa tạo | Cần cho Phase 3 query, sẽ thêm khi vào Phase 3 |
+
+### 15.2 Bug đã fix có thể tái xuất hiện
+
+| Bug | Trigger | Fix |
+|---|---|---|
+| Duplicate upload 2 POST | React StrictMode + side effect trong setState | Module-level Map dedupe 1500ms + side effect ra ngoài setState |
+| Supabase pgbouncer timeout | Port 6543 transaction pooler + real pool | Đổi 5432 session pooler + pool_size=5 |
+| Celery asyncio loop conflict | Shared engine từ FastAPI startup loop | Mỗi Celery task tạo NullPool engine riêng, dispose sau |
+| Gemini 429 toàn pipeline | Free tier 20 RPD chung cho generateContent | Hybrid Gemini→Groq fallback ở NER. Parsing fallback pdfplumber |
+| Source chunks drop nhầm 31/51 rels | normalized_name "tang huyet ap" không match chunk "Tăng huyết áp" | `_strip_diacritics` (unicodedata.NFD) cho cả chunk text trước khi `in` check |
+| Embedding zero vectors | text-embedding-004 deprecated | Thử model list, dùng output_dimensionality=768 cho gemini-embedding-001 |
+| Worker treo lâu ở Gemini call | SDK không có default timeout | Thêm `request_options={"timeout": N}` cho mọi Gemini call |
+| Neo4j relationship type literal | Cypher MERGE cần literal type, không param hoá được | Group rels by type, batch query một câu Cypher per type |
+
+### 15.3 Quota Gemini free tier (quan trọng)
+
+- `gemini-2.5-flash`: 10 RPM, **20 RPD** (project mới)
+- `gemini-embedding-001`: 100 RPD riêng
+- 1 PDF 18 trang ≈ 1 parsing + 18 NER = 19 calls → cạn quota 1 ngày trong 1 upload
+- Khi cạn: parsing fallback pdfplumber (mất Markdown thật → Hướng 3 vô hiệu), NER fallback Groq (mất quality)
+- Giải pháp: enable billing GCP ($300 free credit), không cần đổi code
+
+### 15.4 Files Phase 2 đã tạo/sửa
+
+**Backend domain:** [graph.py](backend/src/mkge/domain/entities/graph.py), [chunk.py](backend/src/mkge/domain/entities/chunk.py)
+
+**Backend pipeline:** [extractor.py](backend/src/mkge/application/pipeline/extractor.py), [ner.py](backend/src/mkge/application/pipeline/ner.py), [structural.py](backend/src/mkge/application/pipeline/structural.py), [verifier.py](backend/src/mkge/application/pipeline/verifier.py), [embedder.py](backend/src/mkge/application/pipeline/embedder.py), [service.py](backend/src/mkge/application/pipeline/service.py)
+
+**Backend infrastructure:** [graph_repo.py](backend/src/mkge/infrastructure/db/neo4j/graph_repo.py), [vector_repo.py](backend/src/mkge/infrastructure/db/qdrant/vector_repo.py), [tasks.py](backend/src/mkge/interface/workers/tasks.py)
+
+**Backend interface:** [graph.py](backend/src/mkge/interface/api/v1/graph.py)
+
+**Frontend:** [GraphViewer.tsx](frontend/src/features/graph/GraphViewer.tsx), [GraphPage.tsx](frontend/src/pages/GraphPage.tsx), [api.ts](frontend/src/features/graph/api.ts), [hooks.ts](frontend/src/features/graph/hooks.ts), [types/index.ts](frontend/src/shared/types/index.ts)
+
+**Scripts/test:** [wipe_neo4j.py](backend/wipe_neo4j.py), [test_gemini.py](backend/test_gemini.py), [test_gemini_pdf.py](backend/test_gemini_pdf.py), [test_medical.html](backend/test_medical.html)
+
+---
+
+*File này được generate từ session thiết kế kiến trúc ngày 2026-05-12.*
+*Mọi thay đổi quyết định kỹ thuật → cập nhật file này.*
+*Lần cập nhật gần nhất: 2026-05-21 (close Phase 2).*
