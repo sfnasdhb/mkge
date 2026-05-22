@@ -255,3 +255,48 @@ class GraphRepository:
             rel_count = rel_record["c"] if rel_record else 0
 
         return {"entity_counts_by_type": type_counts, "relationship_count": rel_count}
+
+    async def get_subgraph_by_entities(self, entity_ids: list[str]) -> dict:
+        if not entity_ids:
+            return {"nodes": [], "edges": []}
+            
+        async with self.driver.session() as session:
+            nodes_result = await session.run(
+                """
+                MATCH (e) WHERE e.id IN $entity_ids AND (e:Drug OR e:Disease OR e:Symptom)
+                OPTIONAL MATCH (e)-[r]-(n) WHERE (n:Drug OR n:Disease OR n:Symptom)
+                WITH collect(e) AS es, collect(n) AS ns
+                UNWIND (es + ns) AS node
+                WITH DISTINCT node
+                WHERE node IS NOT NULL
+                RETURN node.id AS id,
+                       node.name AS name,
+                       labels(node)[0] AS label,
+                       node.normalized_name AS normalized_name,
+                       node.description AS description
+                """,
+                entity_ids=entity_ids,
+            )
+            nodes = []
+            async for record in nodes_result:
+                d = dict(record)
+                d["type"] = d.pop("label", "").upper()
+                nodes.append(d)
+
+            node_ids = [n["id"] for n in nodes]
+            edges = []
+            if node_ids:
+                edges_result = await session.run(
+                    """
+                    MATCH (s)-[r]->(t)
+                    WHERE s.id IN $node_ids AND t.id IN $node_ids
+                    RETURN r.id AS id, s.id AS source, t.id AS target,
+                           type(r) AS type, r.confidence AS confidence,
+                           r.evidence AS evidence,
+                           r.source_chunk_ids AS source_chunk_ids
+                    """,
+                    node_ids=node_ids,
+                )
+                edges = [dict(record) async for record in edges_result]
+
+        return {"nodes": nodes, "edges": edges}

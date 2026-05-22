@@ -5,6 +5,7 @@ import AuthPage from "@/pages/AuthPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import GraphPage from "@/pages/GraphPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import { QueryPage } from "@/pages/QueryPage";
 
 export default function Router() {
   return (
@@ -18,16 +19,7 @@ export default function Router() {
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/graph" element={<GraphPage />} />
             <Route path="/graph/:documentId" element={<GraphPage />} />
-            <Route
-              path="/ask"
-              element={
-                <PlaceholderPage
-                  title="Hỏi đáp AI"
-                  description="GraphRAG chat sẽ có trong Phase 3."
-                  phase="Phase 3"
-                />
-              }
-            />
+            <Route path="/ask" element={<QueryPage />} />
             <Route
               path="/history"
               element={

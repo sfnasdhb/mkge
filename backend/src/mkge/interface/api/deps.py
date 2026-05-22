@@ -16,13 +16,20 @@ _bearer = HTTPBearer(auto_error=False)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    token: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> UserModel:
-    if credentials is None:
-        raise AuthenticationError("Missing authorization header")
+    raw_token = None
+    if credentials:
+        raw_token = credentials.credentials
+    elif token:
+        raw_token = token
+
+    if not raw_token:
+        raise AuthenticationError("Missing authorization header or token")
 
     try:
-        payload = decode_access_token(credentials.credentials)
+        payload = decode_access_token(raw_token)
         user_id = payload.get("sub")
         if not user_id:
             raise ValueError

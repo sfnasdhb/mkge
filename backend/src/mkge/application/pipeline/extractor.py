@@ -82,7 +82,7 @@ def _extract_pages(file_path: str) -> list[tuple[int, str]]:
     out: list[tuple[int, str]] = []
     with pdfplumber.open(file_path) as pdf:
         for i, page in enumerate(pdf.pages, start=1):
-            text = (page.extract_text() or "").strip()
+            text = (page.extract_text(x_tolerance=2) or "").strip()
             if text:
                 out.append((i, text))
     return out
