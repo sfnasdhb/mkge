@@ -673,23 +673,24 @@ RATE_LIMIT_QUERY_PER_HOUR=30
 
 ---
 
-## 14. Trang thai hien tai (cap nhat 2026-05-21)
+## 14. Trang thai hien tai (cap nhat 2026-05-25 — BẢN FINAL)
 
-**Phase đang làm:** Phase 3 (GraphRAG Query) — sắp bắt đầu
+**Phase đang làm:** ✅ Tất cả 5 phase (0→4) đã DONE. Branch `final` = merge của `phase4`.
 
 **Đã hoàn thành:**
 - ✅ Phase 0 (Foundation): Auth + 4 DB cloud + Docker Compose
 - ✅ Phase 1 (Upload + Document Management): UploadZone + DocumentTable + polling status
 - ✅ Phase 2 (Real Extraction Pipeline): Pipeline 6 stage + Hướng 3 ontology + anti-hallucination
+- ✅ Phase 3 (GraphRAG Query): embed → Qdrant → Neo4j subgraph → Gemini answer + ChatBox + history + citations + 1-hop subgraph viewer
+- ✅ Phase 4 (Polish + Admin): rate limiting (sliding window Redis) + admin dashboard (users/stats/audit) + audit log + 13 unit tests + XSS fix + Settings page với RAG params động
 
-**Phase 3 cần làm tiếp:**
-1. `application/query/graphrag.py` — orchestrator (embed → Qdrant → Cypher → context → Llama)
-2. `infrastructure/cache/redis.py` — Redis cache TTL 1h
-3. `interface/api/v1/query.py` — POST /query + GET /query/history
-4. Frontend `features/query/` — ChatBox + AnswerCard + CitationList
-5. `pages/AskPage.tsx` (replace placeholder)
+**Còn lại (out-of-scope BTL, optional Phase 5 stretch):**
+- LLM cost dashboard
+- Compare 2 documents (diff KG)
+- Export graph PNG/JSON
+- Migrate sang Oracle A1 Free khi đăng ký được (chỉ đổi connection string trong .env, code không thay đổi)
 
-**Oracle:** Chưa đăng ký được → không block gì, dùng managed DB cloud trước.
+**Oracle:** Chưa đăng ký được → không block gì, dùng managed DB cloud trước (Supabase + Neo4j Aura + Qdrant Cloud + Upstash).
 
 ---
 
@@ -705,8 +706,8 @@ Tách khỏi §1-13 để giữ plan gốc sạch.
 | Model Gemini | "Gemini 3 Flash" | `gemini-2.5-flash` | Gemini 3 chưa public 2026-05 |
 | Model embedding | `models/text-embedding-004` | `models/gemini-embedding-001` (output_dim=768) | text-embedding-004 đã deprecated. Giữ 768 dim để khớp Qdrant collection |
 | Model verify | "Llama 4 via Groq" | `meta-llama/llama-4-scout-17b-16e-instruct` | Llama 4 Scout là biến thể public trên Groq |
-| LLM Gateway module | Có (§3) | Chưa abstract | Code gọi Gemini/Groq trực tiếp trong từng pipeline module. Phase 4 sẽ refactor |
-| FULLTEXT INDEX entity_search | Có (§4.2) | Chưa tạo | Cần cho Phase 3 query, sẽ thêm khi vào Phase 3 |
+| LLM Gateway module | Có (§3) | **Không abstract** (accepted tech debt) | Pattern Gemini-primary + Groq-fallback đã lặp 4 lần (ner/verifier/embedder/llm_generator). Refactor tiết kiệm ~50 dòng nhưng thêm 1 lớp indirection. Scope BTL không justify. Sửa khi swap model là acceptable |
+| FULLTEXT INDEX entity_search | Có (§4.2) | Chưa tạo | GraphRAG Phase 3 dùng Qdrant vector search + Neo4j ID lookup, không cần FULLTEXT |
 
 ### 15.2 Bug đã fix có thể tái xuất hiện
 
@@ -745,6 +746,59 @@ Tách khỏi §1-13 để giữ plan gốc sạch.
 
 ---
 
+### 15.5 Implementation Notes — Phase 3 (GraphRAG Query)
+
+**Deviation đã được approve:**
+
+| Deviation | Plan gốc | Thực tế | Lý do |
+|---|---|---|---|
+| Answer model | "Llama via Groq" | `gemini-2.5-flash` primary + Groq fallback | Gemini cho câu trả lời tiếng Việt tự nhiên hơn cho y khoa; giữ Groq fallback khi quota cạn |
+| `application/query/graphrag.py` | Tên file trong plan | `application/query/service.py` | Tên ngắn hơn, đồng bộ với `auth/services.py`, `documents/services.py` |
+| 1-hop subgraph viewer kèm câu trả lời | Không có trong plan | Đã thêm | UX: user thấy ngay tri thức nền của answer, kiểm chứng nhanh |
+| Dynamic `top_k` + `temperature` | Hardcoded 0.2 trong plan | Cho phép user chỉnh qua Settings | Lưu localStorage, gửi xuống API mỗi query |
+| Citation về trang PDF | Plan ghi "click → trang" | Hiển thị page + snippet trong CitationList | Không cần PDF viewer overlay → đỡ phức tạp |
+
+**Bug đã fix:**
+
+| Bug | Trigger | Fix |
+|---|---|---|
+| PDF extract dính chữ liền nhau | pdfplumber default mode không add space giữa text segments | `extract_words()` + join lại với space, fix word spacing |
+| LLM trả "không có thông tin" nhưng vẫn render citations | UI luôn show chunks dù answer = "không tìm thấy" | Detect negative keywords trong answer → ẩn citations khi không liên quan |
+| Query timeout 30s ngắt giữa chừng | Axios default 30s, Gemini đôi khi chậm | Tăng timeout client lên 60s |
+
+**Files Phase 3 đã tạo/sửa:**
+- Backend: [query/service.py](backend/src/mkge/application/query/service.py), [cache/redis.py](backend/src/mkge/infrastructure/cache/redis.py), [llm_generator.py](backend/src/mkge/infrastructure/llm/llm_generator.py), [query_history_repo.py](backend/src/mkge/infrastructure/db/postgres/query_history_repo.py), [api/v1/query.py](backend/src/mkge/interface/api/v1/query.py)
+- Frontend: [QueryPage.tsx](frontend/src/pages/QueryPage.tsx), [QueryHistoryPage.tsx](frontend/src/pages/QueryHistoryPage.tsx), [features/query/](frontend/src/features/query/) (ChatBox + AnswerCard + CitationList + QueryService)
+
+---
+
+### 15.6 Implementation Notes — Phase 4 (Polish + Admin)
+
+**Deviation đã được approve:**
+
+| Deviation | Plan gốc | Thực tế | Lý do |
+|---|---|---|---|
+| Settings page | Không có trong plan | Đã thêm `/settings` (profile + theme + RAG params) | Cần chỗ chứa RAG params động (top_k/temperature) → tiện làm full settings luôn |
+| Cascade delete user | Plan chỉ ghi "delete user" | Cleanup toàn bộ: files + Neo4j nodes + Qdrant points + Postgres cascade | An toàn cho dữ liệu y khoa, tránh orphan data |
+| XSS fix iframe preview | Không có trong plan | `html.escape(filename)` | Lỗ hổng phát hiện khi review code, fix luôn |
+
+**Bug đã fix:**
+
+| Bug | Trigger | Fix |
+|---|---|---|
+| Rate limit không reset đúng giờ | Fixed window count theo phút | Sliding window counter qua Redis ZSET với TTL |
+| TypeScript conflict React-Dropzone × Framer Motion | Type incompatibility giữa 2 lib khi animate dropzone | Tách prop spread, dùng `as any` ở junction (acceptable cho frontend animation layer) |
+
+**Test coverage:** 13 unit tests (auth/document/query/rate_limit/security), all pass.
+
+**Files Phase 4 đã tạo/sửa:**
+- Backend: [admin/services.py](backend/src/mkge/application/admin/services.py), [rate_limit.py](backend/src/mkge/interface/api/rate_limit.py), [audit_repo.py](backend/src/mkge/infrastructure/db/postgres/audit_repo.py), [audit.py](backend/src/mkge/domain/value_objects/audit.py), [api/v1/admin.py](backend/src/mkge/interface/api/v1/admin.py), migration `f1b9b8a9183f_add_audit_logs.py`
+- Frontend: [AdminPage.tsx](frontend/src/pages/AdminPage.tsx), [SettingsPage.tsx](frontend/src/pages/SettingsPage.tsx), [features/admin/](frontend/src/features/admin/) (StatsCards + UsersTable + AuditLogTable)
+- Tests: [tests/unit/](backend/tests/unit/) (auth/document/query/rate_limiter/security)
+
+---
+
 *File này được generate từ session thiết kế kiến trúc ngày 2026-05-12.*
 *Mọi thay đổi quyết định kỹ thuật → cập nhật file này.*
+*Bản FINAL cập nhật 2026-05-25 sau khi merge phase4.*
 *Lần cập nhật gần nhất: 2026-05-21 (close Phase 2).*
