@@ -8,6 +8,8 @@ from src.mkge.domain.exceptions import NotFoundError, ValidationError, Authoriza
 from src.mkge.infrastructure.db.neo4j.driver import get_driver
 from src.mkge.infrastructure.db.neo4j.graph_repo import GraphRepository
 from src.mkge.infrastructure.db.postgres.document_repo import DocumentRepository
+from src.mkge.infrastructure.db.postgres.audit_repo import AuditRepository
+from src.mkge.domain.value_objects.audit import AuditAction
 from src.mkge.infrastructure.storage.local import LocalStorageService
 from src.mkge.interface.workers.tasks import process_document
 from src.mkge.config import settings
@@ -42,6 +44,13 @@ class DocumentService:
         )
         
         created_doc = await self.document_repo.create(doc)
+
+        audit_repo = AuditRepository(self.document_repo.session)
+        await audit_repo.create(
+            user_id=user_id,
+            action=AuditAction.UPLOAD_DOCUMENT,
+            details=f"Uploaded document {created_doc.id} with filename '{created_doc.filename}'",
+        )
         
         # enqueue celery task
         process_document.delay(str(document_id))
@@ -50,12 +59,7 @@ class DocumentService:
 
     async def list_documents(self, user_id: uuid.UUID, user_role: str) -> Sequence[Document]:
         if user_role == "admin":
-            # For simplicity, if admin needs all documents we can add `get_all` to repo.
-            # Assuming Phase 1 requirement: "View own docs" YES, "View all docs" YES for admin.
-            # Wait, `get_all_by_user` is implemented. I'll just use it for now unless requested.
-            # Let's add `get_all` to repo, or just return user's docs for now.
-            # Actually, `get_all` wasn't implemented, I will just list user docs here.
-            return await self.document_repo.get_all_by_user(user_id)
+            return await self.document_repo.get_all()
         return await self.document_repo.get_all_by_user(user_id)
 
     async def get_document(self, document_id: uuid.UUID, user_id: uuid.UUID, user_role: str) -> Document:
@@ -88,3 +92,10 @@ class DocumentService:
         except Exception:
             pass  # Qdrant cleanup failure non-blocking
         await self.document_repo.delete(document_id)
+
+        audit_repo = AuditRepository(self.document_repo.session)
+        await audit_repo.create(
+            user_id=user_id,
+            action=AuditAction.DELETE_DOCUMENT,
+            details=f"Deleted document {document_id} with filename '{doc.filename}' (performed by role '{user_role}')",
+        )

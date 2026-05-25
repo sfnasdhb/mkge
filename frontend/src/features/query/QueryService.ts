@@ -36,8 +36,15 @@ export interface QueryResponse {
 }
 
 export const queryService = {
-  async askQuestion(question: string): Promise<QueryResponse> {
-    const { data } = await api.post<QueryResponse>('/query', { question });
+  async askQuestion(
+    question: string,
+    options?: { top_k?: number; temperature?: number }
+  ): Promise<QueryResponse> {
+    const { data } = await api.post<QueryResponse>('/query', {
+      question,
+      top_k: options?.top_k,
+      temperature: options?.temperature,
+    });
     return data;
   },
 

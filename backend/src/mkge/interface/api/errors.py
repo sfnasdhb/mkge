@@ -7,6 +7,7 @@ from src.mkge.domain.exceptions import (
     AuthorizationError,
     ConflictError,
     NotFoundError,
+    RateLimitError,
     ValidationError,
 )
 
@@ -51,6 +52,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ValidationError)
     async def validation(request: Request, exc: ValidationError):
         return _error_response("VALIDATION_ERROR", str(exc), 422, request)
+
+    @app.exception_handler(RateLimitError)
+    async def rate_limit(request: Request, exc: RateLimitError):
+        return _error_response("RATE_LIMIT_EXCEEDED", str(exc), 429, request)
 
     @app.exception_handler(Exception)
     async def generic(request: Request, exc: Exception):

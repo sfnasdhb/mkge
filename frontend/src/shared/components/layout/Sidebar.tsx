@@ -6,7 +6,6 @@ import {
   FileText,
   GitGraph,
   History,
-  LayoutDashboard,
   MessageSquare,
   Settings,
   Shield,

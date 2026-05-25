@@ -17,7 +17,6 @@ import { DocumentTable } from "@/features/documents/DocumentTable";
 import { DocumentTableSkeleton } from "@/features/documents/DocumentSkeleton";
 import { UploadZone } from "@/features/documents/UploadZone";
 import { useDocuments, useUploadDocument, useDeleteDocument } from "@/features/documents/hooks";
-import type { Document } from "@/shared/types";
 
 export default function DocumentsPage() {
   const [query, setQuery] = useState("");

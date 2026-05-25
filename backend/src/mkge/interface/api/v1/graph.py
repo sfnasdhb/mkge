@@ -45,5 +45,6 @@ async def document_graph(
 
 @router.get("/entity/{entity_id}")
 async def entity_subgraph(entity_id: str, user: UserModel = Depends(get_current_user)):
-    # Phase 3 — return single-entity neighborhood
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    repo = GraphRepository(get_driver())
+    subgraph = await repo.get_subgraph_by_entities([entity_id])
+    return subgraph

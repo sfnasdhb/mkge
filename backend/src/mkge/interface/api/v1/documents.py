@@ -2,6 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 
 from src.mkge.interface.api.deps import get_current_user, require_role, get_document_service
+from src.mkge.interface.api.rate_limit import RateLimitDep
 from src.mkge.infrastructure.db.postgres.models import UserModel
 from src.mkge.application.documents.services import DocumentService
 from src.mkge.domain.exceptions import NotFoundError, ValidationError, AuthorizationError
@@ -9,7 +10,7 @@ from src.mkge.domain.exceptions import NotFoundError, ValidationError, Authoriza
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.post("", status_code=202)
+@router.post("", status_code=202, dependencies=[Depends(RateLimitDep("upload"))])
 async def upload_document(
     file: UploadFile = File(...),
     user: UserModel = Depends(require_role("admin", "researcher")),
@@ -59,17 +60,20 @@ async def preview_document(
     try:
         doc = await service.get_document(uuid.UUID(document_id), user.id, user.role)
         # Build a simple HTML page embedding the PDF download URL
+        import html
         from fastapi.responses import HTMLResponse
         embed_url = f"/api/v1/documents/{document_id}/download"
         if token:
             embed_url += f"?token={token}"
+        
+        escaped_filename = html.escape(doc.filename)
         html = f"""
         <!DOCTYPE html>
         <html lang='en'>
         <head>
           <meta charset='UTF-8'>
           <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-          <title>{doc.filename}</title>
+          <title>{escaped_filename}</title>
           <style>body,html{{margin:0;padding:0;height:100%;}}iframe{{border:none;width:100%;height:100%;}}</style>
         </head>
         <body>

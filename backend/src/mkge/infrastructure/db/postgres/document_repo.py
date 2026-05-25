@@ -43,6 +43,26 @@ class DocumentRepository:
         )
         return [self._to_domain(doc) for doc in result.scalars().all()]
 
+    async def get_all(self, offset: int = 0, limit: int = 100) -> Sequence[Document]:
+        result = await self.session.execute(
+            select(DocumentModel).order_by(DocumentModel.created_at.desc()).offset(offset).limit(limit)
+        )
+        return [self._to_domain(doc) for doc in result.scalars().all()]
+
+    async def count_by_status(self) -> dict[str, int]:
+        from sqlalchemy import func
+        result = await self.session.execute(
+            select(DocumentModel.status, func.count()).group_by(DocumentModel.status)
+        )
+        return {row[0]: row[1] for row in result.all()}
+
+    async def count_all(self) -> int:
+        from sqlalchemy import func
+        result = await self.session.execute(
+            select(func.count()).select_from(DocumentModel)
+        )
+        return result.scalar_one()
+
     async def update_status(self, document_id: uuid.UUID, status: str, error_message: str | None = None) -> None:
         db_doc = await self.session.get(DocumentModel, document_id)
         if db_doc:

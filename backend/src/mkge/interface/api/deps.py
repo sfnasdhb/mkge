@@ -59,3 +59,25 @@ def get_document_service(db: AsyncSession = Depends(get_db)):
     repo = DocumentRepository(db)
     storage = LocalStorageService()
     return DocumentService(repo, storage)
+
+
+def get_audit_repository(db: AsyncSession = Depends(get_db)):
+    from src.mkge.infrastructure.db.postgres.audit_repo import AuditRepository
+    return AuditRepository(db)
+
+
+def get_admin_service(db: AsyncSession = Depends(get_db)):
+    from src.mkge.infrastructure.db.postgres.user_repo import UserRepository
+    from src.mkge.infrastructure.db.postgres.document_repo import DocumentRepository
+    from src.mkge.infrastructure.db.postgres.audit_repo import AuditRepository
+    from src.mkge.infrastructure.storage.local import LocalStorageService
+    from src.mkge.infrastructure.db.neo4j.driver import get_driver
+    from src.mkge.application.admin.services import AdminService
+
+    user_repo = UserRepository(db)
+    document_repo = DocumentRepository(db)
+    audit_repo = AuditRepository(db)
+    storage = LocalStorageService()
+    driver = get_driver()
+    return AdminService(user_repo, document_repo, audit_repo, storage, driver, db)
+

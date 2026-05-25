@@ -4,8 +4,10 @@ import AppShell from "@/shared/components/layout/AppShell";
 import AuthPage from "@/pages/AuthPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import GraphPage from "@/pages/GraphPage";
-import PlaceholderPage from "@/pages/PlaceholderPage";
 import { QueryPage } from "@/pages/QueryPage";
+import AdminPage from "@/pages/AdminPage";
+import QueryHistoryPage from "@/pages/QueryHistoryPage";
+import SettingsPage from "@/pages/SettingsPage";
 
 export default function Router() {
   return (
@@ -20,36 +22,9 @@ export default function Router() {
             <Route path="/graph" element={<GraphPage />} />
             <Route path="/graph/:documentId" element={<GraphPage />} />
             <Route path="/ask" element={<QueryPage />} />
-            <Route
-              path="/history"
-              element={
-                <PlaceholderPage
-                  title="Lịch sử truy vấn"
-                  description="Lưu trữ các câu hỏi đã đặt."
-                  phase="Phase 3"
-                />
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <PlaceholderPage
-                  title="Quản trị hệ thống"
-                  description="Dashboard quản trị sẽ có trong Phase 4."
-                  phase="Phase 4"
-                />
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <PlaceholderPage
-                  title="Cài đặt"
-                  description="Cấu hình tài khoản, API keys và chủ đề."
-                  phase="Phase 4"
-                />
-              }
-            />
+            <Route path="/history" element={<QueryHistoryPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
 

@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.mkge.domain.exceptions import AuthenticationError, ConflictError
 from src.mkge.infrastructure.db.postgres.user_repo import UserRepository
 from src.mkge.infrastructure.db.postgres.token_repo import RefreshTokenRepository
+from src.mkge.infrastructure.db.postgres.audit_repo import AuditRepository
+from src.mkge.domain.value_objects.audit import AuditAction
 from src.mkge.shared.security import (
     create_access_token,
     generate_refresh_token,
@@ -15,6 +17,7 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self._users = UserRepository(db)
         self._tokens = RefreshTokenRepository(db)
+        self._db = db
 
     async def register(self, email: str, password: str, full_name: str, role: str = "researcher") -> dict:
         if await self._users.get_by_email(email):
@@ -29,6 +32,13 @@ class AuthService:
         access_token = create_access_token(str(user.id), user.role)
         refresh_token = generate_refresh_token()
         await self._tokens.create(user.id, refresh_token)
+
+        audit_repo = AuditRepository(self._db)
+        await audit_repo.create(
+            user_id=user.id,
+            action=AuditAction.USER_REGISTER,
+            details=f"Registered user with email {email} and role {role}",
+        )
 
         return {
             "access_token": access_token,
@@ -47,6 +57,13 @@ class AuthService:
         access_token = create_access_token(str(user.id), user.role)
         refresh_token = generate_refresh_token()
         await self._tokens.create(user.id, refresh_token)
+
+        audit_repo = AuditRepository(self._db)
+        await audit_repo.create(
+            user_id=user.id,
+            action=AuditAction.USER_LOGIN,
+            details=f"Logged in user with email {email}",
+        )
 
         return {
             "access_token": access_token,
